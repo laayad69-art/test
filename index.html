@@ -398,7 +398,7 @@
 </main>
 
 <footer>
-  Images load from <code>./pages/pageNNN.png</code> — run <code>download_pages.py</code> first if the folder is empty.
+  Images load from <code>./pages/pageNNN.png</code>; if a page is missing locally it's fetched automatically from an online mirror. Run <code>download_pages.py</code> to store all pages locally for offline use.
 </footer>
 
 <script>
@@ -407,6 +407,9 @@
 
   const TOTAL_PAGES = 604;
   const IMG_DIR = "./pages/";
+  // Used automatically when a page is missing from the local ./pages/ folder,
+  // so the app still works even before download_pages.py has been run.
+  const REMOTE_FALLBACK = (n) => "https://raw.githubusercontent.com/GovarJabbar/Quran-PNG/master/" + pad3(n) + ".png";
 
   const grid = document.getElementById("grid");
   const searchInput = document.getElementById("searchInput");
@@ -461,7 +464,15 @@
     img.src = IMG_DIR + "page" + num + ".png";
     img.alt = "Mushaf page " + i;
     img.addEventListener("load", () => img.classList.add("loaded"));
+    img.dataset.triedRemote = "0";
     img.addEventListener("error", () => {
+      if (img.dataset.triedRemote === "0"){
+        // Local file missing (pages/ folder not populated yet) — try the
+        // online mirror once before giving up on this page.
+        img.dataset.triedRemote = "1";
+        img.src = REMOTE_FALLBACK(i);
+        return;
+      }
       if (thumbWrap.querySelector(".img-error")) return;
       img.remove();
       const errEl = document.createElement("div");
@@ -617,14 +628,22 @@
 
     async function fetchOne(pageNum){
       const num = pad3(pageNum);
-      const url = IMG_DIR + "page" + num + ".png";
+      const localUrl = IMG_DIR + "page" + num + ".png";
       try {
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        let resp = await fetch(localUrl);
+        if (!resp.ok) throw new Error("local HTTP " + resp.status);
         const blob = await resp.blob();
         zip.file("page" + num + ".png", blob);
-      } catch (err) {
-        failures.push(pageNum);
+      } catch (localErr) {
+        // Local file missing — fall back to the online mirror.
+        try {
+          const resp2 = await fetch(REMOTE_FALLBACK(pageNum));
+          if (!resp2.ok) throw new Error("remote HTTP " + resp2.status);
+          const blob2 = await resp2.blob();
+          zip.file("page" + num + ".png", blob2);
+        } catch (remoteErr) {
+          failures.push(pageNum);
+        }
       } finally {
         done++;
         setProgress(done, total);
@@ -653,7 +672,7 @@
       }
 
       if (failures.length === total){
-        showBanner(errorBanner, "Could not fetch any of the selected page images. Make sure the pages/ folder exists next to index.html and contains the downloaded PNG files (run download_pages.py).");
+        showBanner(errorBanner, "Could not fetch any of the selected page images from ./pages/ or the online mirror. Check your internet connection, or run download_pages.py to store the images locally.");
         resetProgress();
         return;
       }
