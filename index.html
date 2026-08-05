@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Madinah Mushaf — 604 Pages</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --ink:#122024;
+    --ink-2:#1a2e33;
+    --parchment:#efe6d2;
+    --parchment-dim:#c9bd9e;
+    --gold:#c9a24b;
+    --gold-bright:#e6c46b;
+    --line:rgba(201,162,75,0.25);
+    --card-bg:#182d32;
+    --card-bg-hover:#1f383e;
+    --danger:#c0553f;
+    --radius:10px;
+    --font-display:'Amiri','Scheherazade New',Georgia,'Times New Roman',serif;
+    --font-ui:'Iowan Old Style','Palatino Linotype',Georgia,serif;
+    --font-mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #1c3339 0%, transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, #1a2e33 0%, transparent 55%),
+      var(--ink);
+    color:var(--parchment);
+    font-family:var(--font-ui);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a{color:inherit;}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:linear-gradient(180deg, rgba(18,32,36,0.98) 0%, rgba(18,32,36,0.92) 100%);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    padding:18px clamp(16px,4vw,40px) 16px;
+  }
+
+  .header-top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .title-block h1{
+    margin:0;
+    font-family:var(--font-display);
+    font-size:clamp(22px,3vw,30px);
+    font-weight:700;
+    letter-spacing:0.02em;
+    color:var(--gold-bright);
+  }
+
+  .title-block .sub{
+    margin:2px 0 0;
+    font-size:12.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--parchment-dim);
+  }
+
+  .selected-count{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--parchment-dim);
+    background:rgba(201,162,75,0.08);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:8px 16px;
+    white-space:nowrap;
+  }
+
+  .selected-count strong{
+    color:var(--gold-bright);
+    font-weight:700;
+  }
+
+  /* ---------- Controls bar ---------- */
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:16px;
+  }
+
+  .search-wrap{
+    position:relative;
+    flex:1 1 220px;
+    min-width:180px;
+  }
+
+  .search-wrap input{
+    width:100%;
+    padding:11px 14px 11px 38px;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    background:var(--card-bg);
+    color:var(--parchment);
+    font-family:var(--font-ui);
+    font-size:14.5px;
+    outline:none;
+    transition:border-color .15s ease, background .15s ease;
+  }
+
+  .search-wrap input::placeholder{color:var(--parchment-dim);}
+
+  .search-wrap input:focus{
+    border-color:var(--gold);
+    background:var(--card-bg-hover);
+  }
+
+  .search-wrap .icon{
+    position:absolute;
+    left:13px;
+    top:50%;
+    transform:translateY(-50%);
+    color:var(--parchment-dim);
+    font-size:14px;
+    pointer-events:none;
+  }
+
+  button{
+    font-family:var(--font-ui);
+    font-size:14px;
+    font-weight:600;
+    border-radius:var(--radius);
+    padding:11px 18px;
+    border:1px solid var(--line);
+    background:var(--card-bg);
+    color:var(--parchment);
+    cursor:pointer;
+    transition:transform .08s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
+    white-space:nowrap;
+  }
+
+  button:hover{background:var(--card-bg-hover); border-color:var(--gold);}
+  button:active{transform:scale(0.97);}
+  button:focus-visible{outline:2px solid var(--gold-bright); outline-offset:2px;}
+  button:disabled{opacity:0.45; cursor:not-allowed; transform:none;}
+
+  .btn-primary{
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color:#1a1406;
+    border-color:transparent;
+  }
+  .btn-primary:hover{filter:brightness(1.06); background:linear-gradient(180deg, var(--gold-bright), var(--gold));}
+
+  .btn-ghost{background:transparent;}
+
+  /* ---------- Progress bar ---------- */
+  .progress-wrap{
+    display:none;
+    align-items:center;
+    gap:12px;
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:var(--radius);
+    background:rgba(201,162,75,0.06);
+    border:1px solid var(--line);
+  }
+
+  .progress-wrap.active{display:flex;}
+
+  .progress-track{
+    flex:1;
+    height:8px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.08);
+    overflow:hidden;
+  }
+
+  .progress-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, var(--gold), var(--gold-bright));
+    transition:width .2s ease;
+    border-radius:999px;
+  }
+
+  .progress-label{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--parchment-dim);
+    min-width:120px;
+    text-align:right;
+  }
+
+  .progress-cancel{
+    padding:6px 12px;
+    font-size:12.5px;
+  }
+
+  /* ---------- Status / error banner ---------- */
+  .banner{
+    display:none;
+    margin-top:12px;
+    padding:11px 14px;
+    border-radius:var(--radius);
+    font-size:13.5px;
+    line-height:1.5;
+  }
+  .banner.active{display:block;}
+  .banner.error{background:rgba(192,85,63,0.12); border:1px solid rgba(192,85,63,0.4); color:#f3c9c0;}
+  .banner.info{background:rgba(80,150,140,0.1); border:1px solid rgba(80,150,140,0.35); color:#bfe6dd;}
+
+  /* ---------- Grid ---------- */
+  main{
+    padding:24px clamp(16px,4vw,40px) 60px;
+    max-width:1600px;
+    margin:0 auto;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+    gap:16px;
+  }
+
+  .page-card{
+    position:relative;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    background:var(--card-bg);
+    overflow:hidden;
+    cursor:pointer;
+    transition:border-color .15s ease, transform .1s ease, box-shadow .15s ease;
+  }
+
+  .page-card:hover{
+    border-color:var(--gold);
+    transform:translateY(-2px);
+    box-shadow:0 10px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  .page-card.selected{
+    border-color:var(--gold-bright);
+    box-shadow:0 0 0 2px var(--gold-bright), 0 10px 24px -12px rgba(0,0,0,0.6);
+  }
+
+  .page-card.hidden{display:none;}
+
+  .thumb-wrap{
+    position:relative;
+    aspect-ratio:1024 / 1656;
+    background:
+      linear-gradient(135deg, #1e363c 25%, transparent 25%) -8px 0/16px 16px,
+      linear-gradient(225deg, #1e363c 25%, transparent 25%) -8px 0/16px 16px,
+      linear-gradient(315deg, #1e363c 25%, transparent 25%) 0 0/16px 16px,
+      linear-gradient(45deg, #1e363c 25%, #17282d 25%) 0 0/16px 16px;
+  }
+
+  .thumb-wrap img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    opacity:0;
+    transition:opacity .35s ease;
+  }
+
+  .thumb-wrap img.loaded{opacity:1;}
+
+  .thumb-wrap .img-error{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    color:#e6a394;
+    font-size:11.5px;
+    text-align:center;
+    padding:10px;
+    background:rgba(192,85,63,0.08);
+  }
+
+  .checkbox{
+    position:absolute;
+    top:8px;
+    left:8px;
+    width:22px;
+    height:22px;
+    border-radius:6px;
+    border:1.5px solid rgba(239,230,210,0.65);
+    background:rgba(18,32,36,0.55);
+    backdrop-filter:blur(3px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:2;
+    transition:background .15s ease, border-color .15s ease;
+  }
+
+  .page-card.selected .checkbox{
+    background:var(--gold-bright);
+    border-color:var(--gold-bright);
+  }
+
+  .checkbox svg{
+    width:14px;
+    height:14px;
+    opacity:0;
+    transition:opacity .1s ease;
+  }
+  .page-card.selected .checkbox svg{opacity:1;}
+
+  .page-label{
+    text-align:center;
+    padding:8px 6px;
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.04em;
+    color:var(--parchment-dim);
+    border-top:1px solid var(--line);
+  }
+
+  .page-card.selected .page-label{color:var(--gold-bright);}
+
+  .empty-state{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--parchment-dim);
+    font-size:15px;
+    display:none;
+  }
+  .empty-state.active{display:block;}
+
+  footer{
+    text-align:center;
+    padding:20px;
+    font-size:12px;
+    color:var(--parchment-dim);
+    border-top:1px solid var(--line);
+  }
+
+  @media (max-width:480px){
+    .grid{grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px;}
+    .controls{gap:8px;}
+    button{padding:10px 14px; font-size:13px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="title-block">
+      <h1>Madinah Mushaf</h1>
+      <p class="sub">604 pages · Uthmani Script</p>
+    </div>
+    <div class="selected-count" id="selectedCount"><strong>0</strong>&nbsp;of 604 selected</div>
+  </div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="icon">🔍</span>
+      <input type="text" id="searchInput" inputmode="numeric" placeholder="Search by page number (1–604)…" aria-label="Search by page number">
+    </div>
+    <button id="selectAllBtn" class="btn-ghost">Select All</button>
+    <button id="unselectAllBtn" class="btn-ghost">Unselect All</button>
+    <button id="downloadBtn" class="btn-primary">⬇ Download Selected</button>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">0 / 0</div>
+    <button class="progress-cancel btn-ghost" id="cancelBtn">Cancel</button>
+  </div>
+
+  <div class="banner error" id="errorBanner"></div>
+  <div class="banner info" id="infoBanner"></div>
+</header>
+
+<main>
+  <div class="grid" id="grid"></div>
+  <p class="empty-state" id="emptyState">No pages match your search.</p>
+</main>
+
+<footer>
+  Images load from <code>./pages/pageNNN.png</code> — run <code>download_pages.py</code> first if the folder is empty.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const TOTAL_PAGES = 604;
+  const IMG_DIR = "./pages/";
+
+  const grid = document.getElementById("grid");
+  const searchInput = document.getElementById("searchInput");
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  const unselectAllBtn = document.getElementById("unselectAllBtn");
+  const downloadBtn = document.getElementById("downloadBtn");
+  const selectedCountEl = document.getElementById("selectedCount");
+  const emptyState = document.getElementById("emptyState");
+  const progressWrap = document.getElementById("progressWrap");
+  const progressFill = document.getElementById("progressFill");
+  const progressLabel = document.getElementById("progressLabel");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const errorBanner = document.getElementById("errorBanner");
+  const infoBanner = document.getElementById("infoBanner");
+
+  const selected = new Set();
+  let downloadCancelled = false;
+
+  function pad3(n){ return String(n).padStart(3, "0"); }
+
+  function showBanner(el, msg){
+    el.textContent = msg;
+    el.classList.add("active");
+  }
+  function hideBanner(el){
+    el.classList.remove("active");
+    el.textContent = "";
+  }
+
+  // ---------- Build grid ----------
+  const cardEls = new Map(); // pageNum -> { card, checkbox, img }
+
+  const fragment = document.createDocumentFragment();
+
+  for (let i = 1; i <= TOTAL_PAGES; i++){
+    const num = pad3(i);
+
+    const card = document.createElement("div");
+    card.className = "page-card";
+    card.dataset.page = i;
+    card.setAttribute("role", "checkbox");
+    card.setAttribute("aria-checked", "false");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", "Page " + i);
+
+    const thumbWrap = document.createElement("div");
+    thumbWrap.className = "thumb-wrap";
+
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.src = IMG_DIR + "page" + num + ".png";
+    img.alt = "Mushaf page " + i;
+    img.addEventListener("load", () => img.classList.add("loaded"));
+    img.addEventListener("error", () => {
+      if (thumbWrap.querySelector(".img-error")) return;
+      img.remove();
+      const errEl = document.createElement("div");
+      errEl.className = "img-error";
+      errEl.innerHTML = "⚠<br>Page " + i + "<br>image missing";
+      thumbWrap.appendChild(errEl);
+    });
+
+    const checkbox = document.createElement("div");
+    checkbox.className = "checkbox";
+    checkbox.innerHTML = '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.2 12L13 4.5" stroke="#122024" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    thumbWrap.appendChild(img);
+    thumbWrap.appendChild(checkbox);
+
+    const label = document.createElement("div");
+    label.className = "page-label";
+    label.textContent = "Page " + i;
+
+    card.appendChild(thumbWrap);
+    card.appendChild(label);
+
+    function toggle(){
+      const p = i;
+      if (selected.has(p)){
+        selected.delete(p);
+        card.classList.remove("selected");
+        card.setAttribute("aria-checked", "false");
+      } else {
+        selected.add(p);
+        card.classList.add("selected");
+        card.setAttribute("aria-checked", "true");
+      }
+      updateSelectedCount();
+    }
+
+    card.addEventListener("click", toggle);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " "){
+        e.preventDefault();
+        toggle();
+      }
+    });
+
+    fragment.appendChild(card);
+    cardEls.set(i, card);
+  }
+
+  grid.appendChild(fragment);
+
+  // ---------- Selection count ----------
+  function updateSelectedCount(){
+    selectedCountEl.innerHTML = "<strong>" + selected.size + "</strong>&nbsp;of " + TOTAL_PAGES + " selected";
+    downloadBtn.disabled = selected.size === 0;
+  }
+  updateSelectedCount();
+  downloadBtn.disabled = true;
+
+  // ---------- Select all / unselect all ----------
+  selectAllBtn.addEventListener("click", () => {
+    // Only select currently visible (search-filtered) cards.
+    cardEls.forEach((card, num) => {
+      if (!card.classList.contains("hidden")){
+        selected.add(num);
+        card.classList.add("selected");
+        card.setAttribute("aria-checked", "true");
+      }
+    });
+    updateSelectedCount();
+  });
+
+  unselectAllBtn.addEventListener("click", () => {
+    selected.clear();
+    cardEls.forEach((card) => {
+      card.classList.remove("selected");
+      card.setAttribute("aria-checked", "false");
+    });
+    updateSelectedCount();
+  });
+
+  // ---------- Search by page number ----------
+  let searchTimer = null;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applySearch, 80);
+  });
+
+  function applySearch(){
+    const query = searchInput.value.trim();
+    let anyVisible = false;
+
+    if (query === ""){
+      cardEls.forEach((card) => { card.classList.remove("hidden"); });
+      emptyState.classList.remove("active");
+      return;
+    }
+
+    cardEls.forEach((card, num) => {
+      const match = String(num).includes(query);
+      card.classList.toggle("hidden", !match);
+      if (match) anyVisible = true;
+    });
+
+    emptyState.classList.toggle("active", !anyVisible);
+  }
+
+  // ---------- Download selected as ZIP ----------
+  function setProgress(done, total){
+    progressWrap.classList.add("active");
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    progressFill.style.width = pct + "%";
+    progressLabel.textContent = done + " / " + total + " (" + pct + "%)";
+  }
+
+  function resetProgress(){
+    progressWrap.classList.remove("active");
+    progressFill.style.width = "0%";
+    progressLabel.textContent = "0 / 0";
+  }
+
+  cancelBtn.addEventListener("click", () => {
+    downloadCancelled = true;
+  });
+
+  downloadBtn.addEventListener("click", async () => {
+    hideBanner(errorBanner);
+    hideBanner(infoBanner);
+
+    if (selected.size === 0) return;
+
+    if (typeof JSZip === "undefined"){
+      showBanner(errorBanner, "JSZip failed to load (check your internet connection to the CDN). Cannot build a ZIP file.");
+      return;
+    }
+
+    const pageNumbers = Array.from(selected).sort((a, b) => a - b);
+    const total = pageNumbers.length;
+
+    downloadCancelled = false;
+    downloadBtn.disabled = true;
+    selectAllBtn.disabled = true;
+    unselectAllBtn.disabled = true;
+    setProgress(0, total);
+
+    const zip = new JSZip();
+    const failures = [];
+    let done = 0;
+
+    // Fetch sequentially in small batches to stay gentle on the browser/network
+    // while still giving responsive progress feedback.
+    const CONCURRENCY = 6;
+    let cursor = 0;
+
+    async function fetchOne(pageNum){
+      const num = pad3(pageNum);
+      const url = IMG_DIR + "page" + num + ".png";
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const blob = await resp.blob();
+        zip.file("page" + num + ".png", blob);
+      } catch (err) {
+        failures.push(pageNum);
+      } finally {
+        done++;
+        setProgress(done, total);
+      }
+    }
+
+    async function worker(){
+      while (cursor < pageNumbers.length){
+        if (downloadCancelled) return;
+        const idx = cursor++;
+        await fetchOne(pageNumbers[idx]);
+      }
+    }
+
+    try {
+      const workers = [];
+      for (let w = 0; w < Math.min(CONCURRENCY, pageNumbers.length); w++){
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+
+      if (downloadCancelled){
+        showBanner(infoBanner, "Download cancelled.");
+        resetProgress();
+        return;
+      }
+
+      if (failures.length === total){
+        showBanner(errorBanner, "Could not fetch any of the selected page images. Make sure the pages/ folder exists next to index.html and contains the downloaded PNG files (run download_pages.py).");
+        resetProgress();
+        return;
+      }
+
+      progressLabel.textContent = "Compressing…";
+      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+        (metadata) => {
+          progressFill.style.width = Math.round(metadata.percent) + "%";
+          progressLabel.textContent = "Compressing… " + Math.round(metadata.percent) + "%";
+        }
+      );
+
+      const a = document.createElement("a");
+      const zipUrl = URL.createObjectURL(blob);
+      a.href = zipUrl;
+      a.download = "madinah-mushaf-pages.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 4000);
+
+      if (failures.length > 0){
+        showBanner(errorBanner, failures.length + " page(s) could not be added to the ZIP (missing/failed images): " + failures.map(pad3).join(", "));
+      } else {
+        showBanner(infoBanner, "Downloaded " + (total) + " page(s) as madinah-mushaf-pages.zip");
+      }
+
+    } catch (err) {
+      showBanner(errorBanner, "Unexpected error while building the ZIP: " + (err && err.message ? err.message : err));
+    } finally {
+      downloadBtn.disabled = selected.size === 0;
+      selectAllBtn.disabled = false;
+      unselectAllBtn.disabled = false;
+      setTimeout(resetProgress, 1500);
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>
